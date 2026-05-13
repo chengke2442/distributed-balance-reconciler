@@ -77,7 +77,7 @@ npm run start:dev
 # Seed a balance (simulates HCM pushing to us)
 Invoke-RestMethod -Method Post http://localhost:3000/sync/realtime `
   -ContentType "application/json" `
-  -Body '{"employeeId":"emp-001","locationId":"loc-us-pto","balanceDays":10,"hcmTimestamp":"2026-01-01T00:00:00Z"}'
+  -Body "{\"employeeId\":\"emp-001\",\"locationId\":\"loc-us-pto\",\"balanceDays\":10,\"hcmTimestamp\":\"$(Get-Date -Format 'o')\"}"
 
 # Check balance
 Invoke-RestMethod http://localhost:3000/balances/emp-001/loc-us-pto
@@ -100,7 +100,7 @@ Invoke-RestMethod http://localhost:3000/sync/status
 # Seed a balance
 curl -X POST http://localhost:3000/sync/realtime \
   -H "Content-Type: application/json" \
-  -d '{"employeeId":"emp-001","locationId":"loc-us-pto","balanceDays":10,"hcmTimestamp":"2026-01-01T00:00:00Z"}'
+  -d "{\"employeeId\":\"emp-001\",\"locationId\":\"loc-us-pto\",\"balanceDays\":10,\"hcmTimestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
 
 # Check balance
 curl http://localhost:3000/balances/emp-001/loc-us-pto
