@@ -1,4 +1,4 @@
-# ReadyOn Time-Off Microservice
+# distributed-balance-reconciler
 
 A high-integrity synchronization engine built with NestJS and SQLite. This service bridges the gap between ReadyOn's user interface and an external Human Capital Management (HCM) system, ensuring that employee time-off balances are always accurate, even when updated by external events.
 
