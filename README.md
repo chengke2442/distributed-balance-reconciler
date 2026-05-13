@@ -41,12 +41,25 @@ The service utilizes a **Reliable Cache with Synchronous Write-Through** pattern
 
 ## Getting Started
 
-### Prerequisites
+### Option A — Docker (recommended, works on Windows / macOS / Linux)
 
-- Node.js (v18+)
-- npm / yarn
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop)
 
-### Installation
+```bash
+git clone https://github.com/chengke2442/distributed-balance-reconciler.git
+cd distributed-balance-reconciler
+docker-compose up --build
+```
+
+Both services start automatically:
+- Mock HCM → `http://localhost:3001`
+- Microservice → `http://localhost:3000`
+
+To stop: `docker-compose down`
+
+---
+
+### Option B — Local (Node.js 18+ required)
 
 ```bash
 git clone https://github.com/chengke2442/distributed-balance-reconciler.git
@@ -55,49 +68,23 @@ npm install
 cp .env.example .env
 ```
 
-### Running the Services
+Open **two terminals:**
 
-Open **two terminals** in the project directory:
-
-**Terminal 1 — Mock HCM server** (simulates Workday/SAP):
 ```bash
+# Terminal 1 — Mock HCM server
 npm run start:hcm-mock
-# Listening on http://localhost:3001
-```
 
-**Terminal 2 — Microservice:**
-```bash
+# Terminal 2 — Microservice
 npm run start:dev
-# Listening on http://localhost:3000
 ```
 
-### Trying it out (PowerShell)
+---
 
-```powershell
-# Seed a balance (simulates HCM pushing to us)
-Invoke-RestMethod -Method Post http://localhost:3000/sync/realtime `
-  -ContentType "application/json" `
-  -Body "{\"employeeId\":\"emp-001\",\"locationId\":\"loc-us-pto\",\"balanceDays\":10,\"hcmTimestamp\":\"$(Get-Date -Format 'o')\"}"
+### Trying it out
 
-# Check balance
-Invoke-RestMethod http://localhost:3000/balances/emp-001/loc-us-pto
-
-# Submit a time-off request (double-gate: local check → HCM → deduct)
-Invoke-RestMethod -Method Post http://localhost:3000/requests `
-  -ContentType "application/json" `
-  -Body '{"employeeId":"emp-001","locationId":"loc-us-pto","daysRequested":3}'
-
-# Trigger a full batch reconciliation from the HCM
-Invoke-RestMethod -Method Post http://localhost:3000/sync/batch
-
-# Check the latest sync status
-Invoke-RestMethod http://localhost:3000/sync/status
-```
-
-### Trying it out (bash / macOS / Linux)
-
+**macOS / Linux:**
 ```bash
-# Seed a balance
+# Seed a balance (use current timestamp to avoid SKIPPED)
 curl -X POST http://localhost:3000/sync/realtime \
   -H "Content-Type: application/json" \
   -d "{\"employeeId\":\"emp-001\",\"locationId\":\"loc-us-pto\",\"balanceDays\":10,\"hcmTimestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
@@ -115,6 +102,28 @@ curl -X POST http://localhost:3000/sync/batch
 
 # Check sync status
 curl http://localhost:3000/sync/status
+```
+
+**Windows (PowerShell):**
+```powershell
+# Seed a balance
+Invoke-RestMethod -Method Post http://localhost:3000/sync/realtime `
+  -ContentType "application/json" `
+  -Body "{`"employeeId`":`"emp-001`",`"locationId`":`"loc-us-pto`",`"balanceDays`":10,`"hcmTimestamp`":`"$(Get-Date -Format 'o')`"}"
+
+# Check balance
+Invoke-RestMethod http://localhost:3000/balances/emp-001/loc-us-pto
+
+# Submit a time-off request
+Invoke-RestMethod -Method Post http://localhost:3000/requests `
+  -ContentType "application/json" `
+  -Body '{"employeeId":"emp-001","locationId":"loc-us-pto","daysRequested":3}'
+
+# Trigger batch reconciliation
+Invoke-RestMethod -Method Post http://localhost:3000/sync/batch
+
+# Check sync status
+Invoke-RestMethod http://localhost:3000/sync/status
 ```
 
 ## Testing
