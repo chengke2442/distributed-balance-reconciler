@@ -41,25 +41,7 @@ The service utilizes a **Reliable Cache with Synchronous Write-Through** pattern
 
 ## Getting Started
 
-### Option A — Docker (recommended, works on Windows / macOS / Linux)
-
-**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop)
-
-```bash
-git clone https://github.com/chengke2442/distributed-balance-reconciler.git
-cd distributed-balance-reconciler
-docker-compose up --build
-```
-
-Both services start automatically:
-- Mock HCM → `http://localhost:3001`
-- Microservice → `http://localhost:3000`
-
-To stop: `docker-compose down`
-
----
-
-### Option B — Local (Node.js 18+ required)
+**Prerequisites:** Node.js 18+
 
 ```bash
 git clone https://github.com/chengke2442/distributed-balance-reconciler.git
@@ -135,7 +117,7 @@ Integrity is the core of this project. The test suite covers:
 - **Resilience Tests:** Simulating HCM downtime and balance "drift."
 
 ```bash
-npm run test:cov          # all 44 tests + coverage report
+npm run test:cov          # all 52 tests + coverage report
 npm run test:unit         # unit tests only
 npm run test:integration  # integration tests only
 npm run test:resilience   # resilience tests only
