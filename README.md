@@ -135,8 +135,19 @@ Integrity is the core of this project. The test suite covers:
 - **Resilience Tests:** Simulating HCM downtime and balance "drift."
 
 ```bash
-npm run test:cov          # all 41 tests + coverage report
+npm run test:cov          # all 44 tests + coverage report
 npm run test:unit         # unit tests only
 npm run test:integration  # integration tests only
 npm run test:resilience   # resilience tests only
 ```
+
+### Coverage
+
+| Category | Statements | Branches | Functions | Lines |
+|---|---|---|---|---|
+| `src/balance` | 100% | 100% | 100% | 100% |
+| `src/requests` | 100% | 100% | 100% | 100% |
+| `src/sync` | 100% | 100% | 100% | 100% |
+| `src/hcm` | 100% | 100% | 100% | 100% |
+
+Run `npm run test:cov` to reproduce the full HTML report under `coverage/lcov-report/index.html`.

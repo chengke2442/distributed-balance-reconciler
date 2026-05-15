@@ -47,6 +47,15 @@ describe('RequestsService', () => {
     hcmService = module.get(HcmService);
   });
 
+  describe('getRequest', () => {
+    it('throws NotFoundException when request ID does not exist', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      await expect(service.getRequest('non-existent-id')).rejects.toThrow(
+        'Request non-existent-id not found',
+      );
+    });
+  });
+
   describe('Gate 1 — local eligibility', () => {
     it('rejects immediately when no balance record exists', async () => {
       balanceService.getBalance.mockResolvedValue(null);
