@@ -212,7 +212,7 @@ Returns the current state of a time-off request.
 #### `POST /sync/batch`
 Triggers a full batch reconciliation from the HCM. Intended to be called by a scheduler (cron) or by a webhook from the HCM.
 
-**Response 202:** Sync started asynchronously.
+**Response 200:** Sync completed synchronously. Returns the sync log entry with `status`, `recordsProcessed`, and `recordsUpdated`.
 
 #### `GET /sync/status`
 Returns the status of the most recent batch sync.
