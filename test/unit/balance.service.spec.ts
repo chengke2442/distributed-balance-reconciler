@@ -3,18 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BalanceService } from '../../src/balance/balance.service';
 import { Balance } from '../../src/balance/balance.entity';
-
-const makeBalance = (overrides: Partial<Balance> = {}): Balance =>
-  Object.assign(new Balance(), {
-    id: 1,
-    employeeId: 'emp-001',
-    locationId: 'loc-us-pto',
-    balanceDays: 10,
-    version: 1,
-    lastHcmSyncAt: null,
-    updatedAt: new Date(),
-    ...overrides,
-  });
+import { makeBalance } from '../helpers/factories';
 
 describe('BalanceService', () => {
   let service: BalanceService;
@@ -66,6 +55,7 @@ describe('BalanceService', () => {
       update: jest.fn().mockReturnThis(),
       set: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
+      setParameter: jest.fn().mockReturnThis(),
       execute: jest.fn().mockResolvedValue({ affected }),
     });
 

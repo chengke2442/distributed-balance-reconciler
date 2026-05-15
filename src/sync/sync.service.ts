@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { SyncLog, SyncStatus, SyncType } from './sync-log.entity';
 import { BalanceService } from '../balance/balance.service';
 import { HcmService, HcmBalanceRecord } from '../hcm/hcm.service';
@@ -48,7 +48,7 @@ export class SyncService {
   /**
    * Full batch reconciliation — scheduled hourly and triggerable on demand.
    */
-  @Cron(process.env.BATCH_SYNC_CRON || '0 * * * *')
+  @Cron(CronExpression.EVERY_HOUR)
   async runBatchSync(): Promise<SyncLog> {
     this.logger.log('Starting batch sync');
     const log = await this.syncLogRepo.save({

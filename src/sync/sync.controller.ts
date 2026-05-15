@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
 import { IsDateString, IsNumber, IsPositive, IsString } from 'class-validator';
 import { SyncService } from './sync.service';
 import { SyncLog } from './sync-log.entity';
@@ -33,6 +33,7 @@ export class SyncController {
   }
 
   @Post('batch')
+  @HttpCode(200)
   async triggerBatch(): Promise<SyncLog> {
     return this.syncService.runBatchSync();
   }

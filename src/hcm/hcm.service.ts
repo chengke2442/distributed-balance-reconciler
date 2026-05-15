@@ -50,21 +50,15 @@ export class HcmService {
   }
 
   async getBatchCorpus(): Promise<HcmBalanceRecord[]> {
-    const response = await this.client.get('/hcm/balances/batch', { timeout: 60000 });
-    return response.data;
-  }
-
-  async getBalance(employeeId: string, locationId: string): Promise<HcmBalanceRecord | null> {
-    try {
-      const response = await this.client.get(`/hcm/balances/${employeeId}/${locationId}`);
+    return this.withRetryOrThrow(async () => {
+      const response = await this.client.get('/hcm/balances/batch', { timeout: 60000 });
       return response.data;
-    } catch (err) {
-      if (err.response?.status === 404) return null;
-      throw err;
-    }
+    });
   }
 
-  private async withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  // Returns a failure result on error rather than throwing — used for user-facing requests
+  // where the caller needs to surface a REJECTED status rather than a 500.
+  private async withRetry(fn: () => Promise<HcmSubmitResult>): Promise<HcmSubmitResult> {
     let lastError: Error;
     for (let attempt = 1; attempt <= this.retryCount; attempt++) {
       try {
@@ -73,16 +67,31 @@ export class HcmService {
         lastError = err;
         const isRetryable = !err.response || err.response.status >= 500;
         if (!isRetryable || attempt === this.retryCount) {
-          return {
-            success: false,
-            error: err.response?.data?.error ?? err.message,
-          } as unknown as T;
+          return { success: false, error: err.response?.data?.error ?? err.message };
         }
         const delay = Math.pow(2, attempt - 1) * 1000;
         this.logger.warn(`HCM call failed (attempt ${attempt}/${this.retryCount}), retrying in ${delay}ms`);
         await new Promise((r) => setTimeout(r, delay));
       }
     }
-    return { success: false, error: lastError.message } as unknown as T;
+    return { success: false, error: lastError.message };
+  }
+
+  // Retries on 5xx/network errors and re-throws on final failure — used for background operations.
+  private async withRetryOrThrow<T>(fn: () => Promise<T>): Promise<T> {
+    let lastError: Error;
+    for (let attempt = 1; attempt <= this.retryCount; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastError = err;
+        const isRetryable = !err.response || err.response.status >= 500;
+        if (!isRetryable || attempt === this.retryCount) throw err;
+        const delay = Math.pow(2, attempt - 1) * 1000;
+        this.logger.warn(`HCM call failed (attempt ${attempt}/${this.retryCount}), retrying in ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+    throw lastError;
   }
 }

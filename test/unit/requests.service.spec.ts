@@ -6,22 +6,7 @@ import { RequestsService } from '../../src/requests/requests.service';
 import { TimeOffRequest, RequestStatus } from '../../src/requests/time-off-request.entity';
 import { BalanceService } from '../../src/balance/balance.service';
 import { HcmService } from '../../src/hcm/hcm.service';
-import { Balance } from '../../src/balance/balance.entity';
-
-const makeBalance = (overrides: Partial<Balance> = {}): Balance =>
-  Object.assign(new Balance(), {
-    id: 1, employeeId: 'emp-001', locationId: 'loc-us-pto',
-    balanceDays: 10, version: 3, lastHcmSyncAt: null, updatedAt: new Date(),
-    ...overrides,
-  });
-
-const makeRequest = (overrides: Partial<TimeOffRequest> = {}): TimeOffRequest =>
-  Object.assign(new TimeOffRequest(), {
-    id: 'req-uuid-1', employeeId: 'emp-001', locationId: 'loc-us-pto',
-    daysRequested: 2, status: RequestStatus.PENDING, hcmReferenceId: null,
-    hcmError: null, balanceVersionAtRequest: 3, createdAt: new Date(), updatedAt: new Date(),
-    ...overrides,
-  });
+import { makeBalance, makeRequest } from '../helpers/factories';
 
 describe('RequestsService', () => {
   let service: RequestsService;
@@ -80,8 +65,8 @@ describe('RequestsService', () => {
 
   describe('Gate 2 — HCM authority', () => {
     beforeEach(() => {
-      balanceService.getBalance.mockResolvedValue(makeBalance({ balanceDays: 10 }));
-      mockRepo.save.mockResolvedValue(makeRequest());
+      balanceService.getBalance.mockResolvedValue(makeBalance({ balanceDays: 10, version: 3 }));
+      mockRepo.save.mockResolvedValue(makeRequest({ balanceVersionAtRequest: 3 }));
       mockRepo.update.mockResolvedValue({ affected: 1 });
     });
 

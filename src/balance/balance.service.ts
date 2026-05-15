@@ -38,13 +38,14 @@ export class BalanceService {
       .createQueryBuilder()
       .update(Balance)
       .set({
-        balanceDays: () => `balance_days - ${days}`,
+        balanceDays: () => `balance_days - :days`,
         version: () => `version + 1`,
       })
       .where(
         'employee_id = :employeeId AND location_id = :locationId AND version = :version',
         { employeeId, locationId, version: expectedVersion },
       )
+      .setParameter('days', days)
       .execute();
 
     if (result.affected === 0) {
@@ -93,14 +94,5 @@ export class BalanceService {
       .execute();
 
     return 'APPLIED';
-  }
-
-  async seed(employeeId: string, locationId: string, balanceDays: number, lastHcmSyncAt?: Date): Promise<Balance> {
-    const existing = await this.getBalance(employeeId, locationId);
-    if (existing) {
-      await this.repo.update(existing.id, { balanceDays, lastHcmSyncAt: lastHcmSyncAt ?? null });
-      return this.getBalance(employeeId, locationId);
-    }
-    return this.repo.save({ employeeId, locationId, balanceDays, version: 1, lastHcmSyncAt: lastHcmSyncAt ?? null });
   }
 }

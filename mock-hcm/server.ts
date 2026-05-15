@@ -4,7 +4,6 @@ import * as http from 'http';
 const app = express();
 app.use(express.json());
 
-// In-memory balance store: { employeeId: { locationId: days } }
 let balances: Record<string, Record<string, number>> = {};
 let referenceCounter = 1;
 let simulateTimeout = false;
@@ -45,7 +44,7 @@ app.get('/hcm/balances/:employeeId/:locationId', (req: Request, res: Response) =
 
 // ── Time-off submission ──────────────────────────────────────────────────────
 
-app.post('/hcm/time-off', async (req: Request, res: Response) => {
+app.post('/hcm/time-off', (req: Request, res: Response) => {
   if (simulateTimeout) {
     // Never respond — caller will hit its timeout
     return;
