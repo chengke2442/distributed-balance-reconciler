@@ -43,6 +43,20 @@ describe('Requests — Integration', () => {
   });
 
   describe('Happy path', () => {
+    it('approves a fractional (0.5 day) request and decrements balance correctly', async () => {
+      await seedBalance(app, hcmPort, 'emp-010', 'loc-us-pto', 2);
+
+      const res = await request(app.getHttpServer())
+        .post('/requests')
+        .send({ employeeId: 'emp-010', locationId: 'loc-us-pto', daysRequested: 0.5 });
+
+      expect(res.status).toBe(201);
+      expect(res.body.status).toBe(RequestStatus.APPROVED);
+
+      const balRes = await request(app.getHttpServer()).get('/balances/emp-010/loc-us-pto');
+      expect(balRes.body.balanceDays).toBe(1.5);
+    });
+
     it('approves a valid request and decrements local balance', async () => {
       await seedBalance(app, hcmPort, 'emp-001', 'loc-us-pto', 10);
 
@@ -129,6 +143,29 @@ describe('Requests — Integration', () => {
       const getRes = await request(app.getHttpServer()).get(`/requests/${id}`);
       expect(getRes.status).toBe(200);
       expect(getRes.body.id).toBe(id);
+    });
+
+    it('returns all requests for an employee via GET /requests/employee/:employeeId', async () => {
+      await seedBalance(app, hcmPort, 'emp-004', 'loc-us-pto', 10);
+
+      await request(app.getHttpServer())
+        .post('/requests')
+        .send({ employeeId: 'emp-004', locationId: 'loc-us-pto', daysRequested: 1 });
+      await request(app.getHttpServer())
+        .post('/requests')
+        .send({ employeeId: 'emp-004', locationId: 'loc-us-pto', daysRequested: 2 });
+
+      const listRes = await request(app.getHttpServer()).get('/requests/employee/emp-004');
+      expect(listRes.status).toBe(200);
+      expect(Array.isArray(listRes.body)).toBe(true);
+      expect(listRes.body.length).toBe(2);
+      expect(listRes.body.every((r: any) => r.employeeId === 'emp-004')).toBe(true);
+    });
+
+    it('returns an empty array for an employee with no requests', async () => {
+      const listRes = await request(app.getHttpServer()).get('/requests/employee/emp-nobody');
+      expect(listRes.status).toBe(200);
+      expect(listRes.body).toEqual([]);
     });
   });
 });

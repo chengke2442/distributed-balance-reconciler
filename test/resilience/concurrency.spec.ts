@@ -57,10 +57,15 @@ describe('Resilience — Concurrency & Race Conditions', () => {
 
       const statuses = [res1.body.status, res2.body.status];
       const approved = statuses.filter((s) => s === RequestStatus.APPROVED);
+      const rejected = statuses.filter((s) => s === RequestStatus.REJECTED);
 
+      // Exactly one approval and one rejection — no double-spend, no silent drop
+      expect(approved.length).toBe(1);
+      expect(rejected.length).toBe(1);
+
+      // Balance must be exactly 0 — the full 2 days consumed by the one approval
       const balRes = await request(app.getHttpServer()).get('/balances/emp-001/loc-us-pto');
-      expect(balRes.body.balanceDays).toBeGreaterThanOrEqual(0);
-      expect(approved.length).toBeLessThanOrEqual(1);
+      expect(balRes.body.balanceDays).toBe(0);
     });
 
     it('does not let balance go negative even with concurrent requests', async () => {
