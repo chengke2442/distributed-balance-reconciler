@@ -1,45 +1,78 @@
-# distributed-balance-reconciler
+# Distributed Balance Reconciler
 
-A high-integrity synchronization engine built with NestJS and SQLite. This service bridges the gap between ReadyOn's user interface and an external Human Capital Management (HCM) system, ensuring that employee time-off balances are always accurate, even when updated by external events.
+A backend service that keeps employee time-off balances consistent between a local application and an external Human Capital Management (HCM) system.
 
-## Architecture
+Built with NestJS, TypeScript, SQLite, and TypeORM. The project focuses on synchronization correctness, concurrency safety, external-service failures, and testable recovery behavior.
 
-The service utilizes a **Reliable Cache with Synchronous Write-Through** pattern:
+## Why This Exists
 
-- **Read:** Employee balances are served from the local SQLite database for sub-millisecond latency.
-- **Write:** Time-off requests are validated locally first, then synchronously committed to the HCM.
-- **Reconcile:** A periodic batch process pulls the full corpus from the HCM to resolve discrepancies (e.g., work anniversaries or manual HR adjustments).
+An employee’s balance can change outside the application—for example, through manual HR adjustments or anniversary grants. A local cache alone can become stale, while relying entirely on the external HCM would make reads slower and less resilient.
+
+This service provides fast local reads while treating the HCM as the source of truth.
+
+## System Design
+
+```mermaid
+flowchart LR
+    Client[Client] --> API[NestJS API]
+    API --> DB[(SQLite / Local Balance Store)]
+    API --> HCM[External HCM API]
+
+    Scheduler[Periodic Reconciliation] --> HCM
+    Scheduler --> DB
+```
+
+### Core Flow
+
+1. **Read balance** — Serve the current balance from the local database.
+2. **Submit time-off request** — Validate eligibility locally, then synchronously confirm the request with the HCM.
+3. **Reconcile** — Periodically fetch HCM balances and resolve drift in favor of the HCM source of truth.
+
+## Key Engineering Decisions
+
+### Optimistic Concurrency Control
+
+A user request and a background reconciliation job can update the same balance concurrently. Each balance record includes a version or timestamp, preventing stale writes from overwriting newer state.
+
+### Double-Gate Validation
+
+The service validates a request locally for fast user feedback, then relies on the HCM response as the final approval authority. This avoids approving requests based on stale cached state.
+
+### Recovery from Balance Drift
+
+The reconciliation process compares local and HCM balances. When they differ, the HCM value wins, which handles external updates such as manual HR changes.
+
+### External Dependency Failures
+
+The system treats HCM availability and response correctness as failure modes. Tests simulate HCM downtime and inconsistent responses to verify that the service fails safely.
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | NestJS (Node.js) |
-| Database | SQLite with TypeORM (per-employee, per-location partitioning) |
-| Testing | Jest (Unit, Integration, and E2E with Mock HCM Servers) |
-| Dev Methodology | 100% Agentic Development (AI-orchestrated architecture and testing) |
+| Area | Technology |
+| --- | --- |
+| Backend | NestJS, TypeScript |
+| Persistence | SQLite, TypeORM |
+| External integration | Mock HCM service |
+| Testing | Jest unit, integration, end-to-end, and resilience tests |
+| Development approach | AI-assisted development with human-reviewed design, code, and tests |
 
-## Key Challenges & Solutions
+## Testing
 
-### 1. The "Anniversary" Problem
+The test suite includes **52 tests** across the following layers:
 
-**Challenge:** HCM balances can change independently (e.g., an employee gets a bonus day on their work anniversary).
+- **Unit tests** — Balance calculations and validation logic.
+- **Integration tests** — API and database behavior.
+- **End-to-end tests** — Full flows between the application and mock HCM.
+- **Resilience tests** — HCM downtime and balance-drift scenarios.
 
-**Solution:** The `SyncEngine` performs a "Delta Analysis" during batch imports. If the HCM balance differs from the local balance, the HCM (Source of Truth) always wins.
+```bash
+npm run test:cov
+npm run test:unit
+npm run test:integration
+npm run test:resilience
+```
 
-### 2. Distributed Race Conditions
-
-**Challenge:** A user requests leave while a batch sync is in progress.
-
-**Solution:** Implementation of **Optimistic Concurrency Control**. Every balance record includes a version/timestamp to ensure we don't overwrite fresh data with stale batch info.
-
-### 3. Defensive Validation
-
-**Challenge:** The HCM API might be down or return inconsistent errors.
-
-**Solution:** The service implements a **"Double-Gate"** validation. We calculate eligibility locally to provide instant UI feedback, but treat the HCM response as the final authority before "Approving" a request.
-
-## Getting Started
+## Run Locally
 
 **Prerequisites:** Node.js 18+
 
@@ -50,28 +83,27 @@ npm install
 cp .env.example .env
 ```
 
-Open **two terminals:**
+Start the mock HCM service:
 
 ```bash
-# Terminal 1 — Mock HCM server
 npm run start:hcm-mock
+```
 
-# Terminal 2 — Microservice
+In a second terminal, start the application:
+
+```bash
 npm run start:dev
 ```
 
----
+## Try the API
 
-### Trying it out
-
-**macOS / Linux:**
 ```bash
-# Seed a balance (use current timestamp to avoid SKIPPED)
+# Seed a balance
 curl -X POST http://localhost:3000/sync/realtime \
   -H "Content-Type: application/json" \
-  -d "{\"employeeId\":\"emp-001\",\"locationId\":\"loc-us-pto\",\"balanceDays\":10,\"hcmTimestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+  -d "{\"employeeId\":\"emp-001\",\"locationId\":\"loc-us-pto\",\"balanceDays\":10,\"hcmTimestamp\":\"2026-01-01T00:00:00Z\"}"
 
-# Check balance
+# Check a balance
 curl http://localhost:3000/balances/emp-001/loc-us-pto
 
 # Submit a time-off request
@@ -79,57 +111,6 @@ curl -X POST http://localhost:3000/requests \
   -H "Content-Type: application/json" \
   -d '{"employeeId":"emp-001","locationId":"loc-us-pto","daysRequested":3}'
 
-# Trigger batch reconciliation
+# Trigger reconciliation
 curl -X POST http://localhost:3000/sync/batch
-
-# Check sync status
-curl http://localhost:3000/sync/status
 ```
-
-**Windows (PowerShell):**
-```powershell
-# Seed a balance
-Invoke-RestMethod -Method Post http://localhost:3000/sync/realtime `
-  -ContentType "application/json" `
-  -Body "{`"employeeId`":`"emp-001`",`"locationId`":`"loc-us-pto`",`"balanceDays`":10,`"hcmTimestamp`":`"$(Get-Date -Format 'o')`"}"
-
-# Check balance
-Invoke-RestMethod http://localhost:3000/balances/emp-001/loc-us-pto
-
-# Submit a time-off request
-Invoke-RestMethod -Method Post http://localhost:3000/requests `
-  -ContentType "application/json" `
-  -Body '{"employeeId":"emp-001","locationId":"loc-us-pto","daysRequested":3}'
-
-# Trigger batch reconciliation
-Invoke-RestMethod -Method Post http://localhost:3000/sync/batch
-
-# Check sync status
-Invoke-RestMethod http://localhost:3000/sync/status
-```
-
-## Testing
-
-Integrity is the core of this project. The test suite covers:
-
-- **Unit Tests:** Logic for balance calculations and dimension validation.
-- **Integration Tests:** End-to-end flows between ReadyOn and the Mock HCM.
-- **Resilience Tests:** Simulating HCM downtime and balance "drift."
-
-```bash
-npm run test:cov          # all 52 tests + coverage report
-npm run test:unit         # unit tests only
-npm run test:integration  # integration tests only
-npm run test:resilience   # resilience tests only
-```
-
-### Coverage
-
-| Category | Statements | Branches | Functions | Lines |
-|---|---|---|---|---|
-| `src/balance` | 100% | 100% | 100% | 100% |
-| `src/requests` | 100% | 100% | 100% | 100% |
-| `src/sync` | 100% | 100% | 100% | 100% |
-| `src/hcm` | 100% | 100% | 100% | 100% |
-
-Run `npm run test:cov` to reproduce the full HTML report under `coverage/lcov-report/index.html`.
